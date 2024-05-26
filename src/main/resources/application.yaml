@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: create
+logging:
+  level:
+    org.springframework.security: trace
+jwt:
+  secret: ao5iZOm2/n2iJOM8lBofE2V0iXmjuyhw1A9AnT584IrSmNbqsfD7gbwZVmmQo5R9
+  lifetime: 30m
