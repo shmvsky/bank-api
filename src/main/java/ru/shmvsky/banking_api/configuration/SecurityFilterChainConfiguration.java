@@ -26,8 +26,8 @@ public class SecurityFilterChainConfiguration {
         httpSecurity
                 .authorizeHttpRequests(
                         authorize -> authorize
-                                .requestMatchers("/api/service/**").permitAll()
-                                .requestMatchers("/api/token").permitAll()
+                                .requestMatchers("/swagger-ui/**").permitAll()
+                                .requestMatchers("/api/service/**", "/api/token").permitAll()
                                 .requestMatchers("/api/**").authenticated()
                                 .anyRequest().permitAll()
                 )

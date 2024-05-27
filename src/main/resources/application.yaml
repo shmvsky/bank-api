@@ -7,8 +7,15 @@ spring:
     hibernate:
       ddl-auto: update
 logging:
+  file:
+    name: logs/spring-application.log
   level:
-    org.springframework.security: trace
+    root: INFO
+    org.springframework.web: DEBUG
+    org.springframework.security: TRACE
+springdoc:
+  swagger-ui:
+    path: /swagger-ui/index.html
 jwt:
   secret: ao5iZOm2/n2iJOM8lBofE2V0iXmjuyhw1A9AnT584IrSmNbqsfD7gbwZVmmQo5R9
   lifetime: 30m

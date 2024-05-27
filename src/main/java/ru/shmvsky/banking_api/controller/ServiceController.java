@@ -33,5 +33,4 @@ public class ServiceController {
         return userService.registerUser(request);
     }
 
-
 }

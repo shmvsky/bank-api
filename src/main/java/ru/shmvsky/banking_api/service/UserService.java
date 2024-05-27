@@ -69,7 +69,7 @@ public class UserService implements UserDetailsService {
 
         System.out.println(u);
 
-        log.debug(String.format("User %s successfully", u.getUsername()));
+        log.info(String.format("User %s successfully", u.getUsername()));
 
         return u;
     }
@@ -103,7 +103,7 @@ public class UserService implements UserDetailsService {
 
         var u = new UserResponse(userRepository.save(user));
 
-        log.debug(String.format("%s contacts has been updated", u.getUsername()));
+        log.info(String.format("%s contacts has been updated", u.getUsername()));
 
         return u;
 
@@ -160,7 +160,7 @@ public class UserService implements UserDetailsService {
         accountRepository.save(sender);
         accountRepository.save(receiver);
 
-        log.debug(String.format("%s had transferred %f$ to %s", name, request.getAmount(), request.getTo()));
+        log.info(String.format("%s had transferred %f$ to %s", name, request.getAmount(), request.getTo()));
 
         return new TransferResponse(request.getTo(), request.getAmount(), sender.getBalance(), "success");
 
