@@ -2,7 +2,6 @@ package ru.shmvsky.banking_api.service;
 
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.text.CaseUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -14,7 +13,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import ru.shmvsky.banking_api.dto.*;
+import ru.shmvsky.banking_api.exception.EmailAlreadyTaken;
 import ru.shmvsky.banking_api.exception.NoContactPresentException;
+import ru.shmvsky.banking_api.exception.PhoneNumberAlreadyTaken;
+import ru.shmvsky.banking_api.exception.UsernameAlreadyTaken;
 import ru.shmvsky.banking_api.model.Account;
 import ru.shmvsky.banking_api.model.User;
 import ru.shmvsky.banking_api.repository.AccountRepository;
@@ -42,26 +44,34 @@ public class UserService implements UserDetailsService {
     }
 
     public User registerUser(RegisterRequest request) {
-        if (request.email() == null & request.phone() == null) {
-            throw new NoContactPresentException();
+        validateContacts(request.getEmail(), request.getPhone());
+
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new UsernameAlreadyTaken(request.getUsername());
         }
 
         var user = new User();
-        user.setUsername(request.username());
-        user.setPassword(passwordEncoder.encode(request.password()));
-        user.setFullname(request.fullname());
-        user.setBirthDate(LocalDate.parse(request.birthDate()));
-        user.setPhone(request.phone());
-        user.setEmail(request.email());
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setFullname(request.getFullname());
+        user.setBirthDate(LocalDate.parse(request.getBirthDate()));
+        user.setPhone(request.getPhone());
+        user.setEmail(request.getEmail());
 
         var account = new Account();
-        account.setOriginalBalance(request.amount());
-        account.setBalance(request.amount());
+        account.setOriginalBalance(request.getAmount());
+        account.setBalance(request.getAmount());
         account.setUser(user);
 
         user.setAccount(account);
 
-        return userRepository.save(user);
+        User u = userRepository.save(user);
+
+        System.out.println(u);
+
+        log.debug(String.format("User %s successfully", u.getUsername()));
+
+        return u;
     }
 
     public User getByUsername(String username) throws UsernameNotFoundException {
@@ -85,27 +95,43 @@ public class UserService implements UserDetailsService {
     }
 
     public UserResponse updateContacts(ContactsUpdateRequest contacts, String name) {
-        if (contacts.email() == null & contacts.phone() == null) {
-            throw new NoContactPresentException();
-        }
+        validateContacts(contacts.getEmail(), contacts.getPhone());
 
         var user = getByUsername(name);
-        user.setPhone(contacts.phone());
-        user.setEmail(contacts.email());
+        user.setPhone(contacts.getPhone());
+        user.setEmail(contacts.getEmail());
 
-        return new UserResponse(userRepository.save(user));
+        var u = new UserResponse(userRepository.save(user));
+
+        log.debug(String.format("%s contacts has been updated", u.getUsername()));
+
+        return u;
 
     }
 
+    private void validateContacts(String email, String phone) {
+        if (email == null & phone == null) {
+            throw new NoContactPresentException();
+        }
+
+        if (userRepository.existsByPhone(phone)) {
+            throw new PhoneNumberAlreadyTaken(phone);
+        }
+
+        if (userRepository.existsByEmail(email)) {
+            throw new EmailAlreadyTaken(email);
+        }
+    }
+
     public Page<UserResponse> search(Integer page, SearchRequest searchRequest) {
-        LocalDate birthDate = searchRequest.birthDate() != null ? LocalDate.parse(searchRequest.birthDate(), DateTimeFormatter.ISO_DATE) : null;
+        LocalDate birthDate = searchRequest.getBirthDate() != null ? LocalDate.parse(searchRequest.getBirthDate(), DateTimeFormatter.ISO_DATE) : null;
 
         Specification<User> spec = Specification.where(UserSpecifications.hasBirthDateAfter(birthDate))
-                .and(UserSpecifications.hasPhone(searchRequest.phone()))
-                .and(UserSpecifications.hasFullNameLike(searchRequest.fullname()))
-                .and(UserSpecifications.hasEmail(searchRequest.email()));
+                .and(UserSpecifications.hasFullNameLike(searchRequest.getFullname()))
+                .and(UserSpecifications.hasEmail(searchRequest.getEmail()))
+                .and(UserSpecifications.hasPhone(searchRequest.getPhone()));
 
-        Sort sort = Sort.by(searchRequest.order().equals("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC, CaseUtils.toCamelCase(searchRequest.sort_by(), false, '_'));
+        Sort sort = Sort.by(searchRequest.getOrder().equals("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC, searchRequest.getSortBy());
 
         Pageable pageable = PageRequest.of(page, 5, sort);
 
@@ -118,23 +144,30 @@ public class UserService implements UserDetailsService {
     @Transactional
     public TransferResponse transfer(TransferRequest request, String name) {
         Account sender = getByUsername(name).getAccount();
-        Account receiver = getByUsername(request.to()).getAccount();
+        Account receiver = getByUsername(request.getTo()).getAccount();
 
-        if (request.amount().compareTo(BigDecimal.ZERO) <= 0) {
-            return new TransferResponse(request.to(), request.amount(), sender.getBalance(), "rejected");
+        if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return new TransferResponse(request.getTo(), request.getAmount(), sender.getBalance(), "rejected");
         }
 
-        if (sender.getBalance().compareTo(request.amount()) < 0) {
-            return new TransferResponse(request.to(), request.amount(), sender.getBalance(), "rejected");
+        if (sender.getBalance().compareTo(request.getAmount()) < 0) {
+            return new TransferResponse(request.getTo(), request.getAmount(), sender.getBalance(), "rejected");
         }
 
-        sender.setBalance(sender.getBalance().subtract(request.amount()));
-        receiver.setBalance(receiver.getBalance().add(request.amount()));
+        sender.setBalance(sender.getBalance().subtract(request.getAmount()));
+        receiver.setBalance(receiver.getBalance().add(request.getAmount()));
 
         accountRepository.save(sender);
         accountRepository.save(receiver);
 
-        return new TransferResponse(request.to(), request.amount(), sender.getBalance(), "success");
+        log.debug(String.format("%s had transferred %f$ to %s", name, request.getAmount(), request.getTo()));
 
+        return new TransferResponse(request.getTo(), request.getAmount(), sender.getBalance(), "success");
+
+    }
+
+    @Transactional
+    public void deleteUser(String username) {
+        userRepository.deleteByUsername(username);
     }
 }

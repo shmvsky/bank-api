@@ -1,7 +1,9 @@
 package ru.shmvsky.banking_api.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,6 +15,7 @@ import ru.shmvsky.banking_api.util.JwtUtils;
 
 @RestController
 @RequestMapping("/api/token")
+@Validated
 public class TokenController {
 
     private final UserService userService;
@@ -27,10 +30,10 @@ public class TokenController {
     }
 
     @PostMapping
-    public TokenResponse generateTokenFor(@RequestBody TokenRequest request) {
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.username(), request.password()));
+    public TokenResponse generateTokenFor(@Valid @RequestBody TokenRequest request) {
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
-        var user = userService.loadUserByUsername(request.username());
+        var user = userService.loadUserByUsername(request.getUsername());
         var token = jwtUtils.generateToken(user);
 
         return new TokenResponse(token);

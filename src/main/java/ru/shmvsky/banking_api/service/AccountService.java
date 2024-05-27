@@ -24,7 +24,7 @@ public class AccountService {
     @Transactional
     public void updateBalances() {
         List<Account> accounts = accountRepository.findAll();
-        log.info("Updating accounts balances");
+        log.debug("Updating accounts balances");
         for (Account account : accounts) {
             BigDecimal maxAllowedBalance = account.getOriginalBalance().multiply(BigDecimal.valueOf(2.07));
             BigDecimal newBalance = account.getBalance().multiply(BigDecimal.valueOf(1.05));

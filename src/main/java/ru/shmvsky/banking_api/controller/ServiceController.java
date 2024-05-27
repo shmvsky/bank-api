@@ -1,5 +1,6 @@
 package ru.shmvsky.banking_api.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import ru.shmvsky.banking_api.dto.RegisterRequest;
 import ru.shmvsky.banking_api.model.User;
@@ -28,7 +29,7 @@ public class ServiceController {
     }
 
     @PostMapping("/users")
-    public User createUser(@RequestBody RegisterRequest request) {
+    public User createUser(@Valid @RequestBody RegisterRequest request) {
         return userService.registerUser(request);
     }
 
